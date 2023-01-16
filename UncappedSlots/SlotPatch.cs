@@ -11,16 +11,16 @@ public class SlotPatch
 {
     private static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
     {
-        List<CodeInstruction> newInstructions = ListPool<CodeInstruction>.Shared.Rent(instructions);
-        
-        int index = newInstructions.FindLastIndex(x => x.opcode == OpCodes.Callvirt && x.operand is MethodInfo info && info == AccessTools.Method(typeof(YamlConfig), nameof(YamlConfig.GetInt)));
+        foreach (CodeInstruction instruction in instructions)
+        {
+            if (instruction.opcode != OpCodes.Callvirt || instruction.operand is not MethodInfo info || info != AccessTools.Method(typeof(YamlConfig), nameof(YamlConfig.GetInt)))
+            {
+                yield return instruction;
+                continue;
+            }
 
-        newInstructions[index].operand = AccessTools.Method(typeof(SlotPatch), nameof(UncappedSlots));
-        
-        foreach (CodeInstruction instruction in newInstructions)
-            yield return instruction;
-        
-        ListPool<CodeInstruction>.Shared.Return(newInstructions);
+            yield return new CodeInstruction(OpCodes.Callvirt, AccessTools.Method(typeof(SlotPatch), nameof(UncappedSlots)));
+        }
     }
 
     private static int UncappedSlots(YamlConfig _, string key, int def) => -1;
